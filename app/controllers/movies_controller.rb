@@ -7,12 +7,27 @@ class MoviesController < ApplicationController
   end
 
   def index
-    @movies = Movie.all(:order => params[:sort_by])
-	if params[:sort_by] == 'title' 
-		@title_col_class = 'hilite'
-	elsif params[:sort_by] == 'release_date' 
-		@date_col_class = 'hilite'
-	end
+    remember_previous_settings
+    @all_ratings = Movie.all_ratings
+    @selected_ratings = Hash.new
+    if params[:ratings]
+      params[:ratings].keys.each do |r|
+          @selected_ratings[r] = "1"
+      end
+    else
+      @all_ratings.each do |r|
+        @selected_ratings[r] = "1"
+      end
+    end
+
+    @movies = Movie.find_all_by_rating(@selected_ratings.keys, :order => params[:sort_by])
+    if params[:sort_by] == 'title' 
+      @sort_by = 'title'
+      @title_col_class = 'hilite'
+    elsif params[:sort_by] == 'release_date' 
+      @sort_by = 'release_date'
+      @date_col_class = 'hilite'
+    end
   end
 
   def new
@@ -41,6 +56,22 @@ class MoviesController < ApplicationController
     @movie.destroy
     flash[:notice] = "Movie '#{@movie.title}' deleted."
     redirect_to movies_path
+  end
+  
+  def remember_previous_settings
+    settings = [:sort_by, :ratings]
+    redirect_needed = false
+    settings.each do |s|
+      if params[s]
+        session[s] = params[s]
+      elsif session[s]
+        params[s] = session[s]
+        redirect_needed = true
+      end
+    end
+    if redirect_needed
+      redirect_to movies_path(params)
+    end
   end
 
 end
